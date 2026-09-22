@@ -1,0 +1,88 @@
+【所属分类】自动剪辑与批量导出(FFmpeg)
+【技能名称】方案→成片桥接器（中间产物转换）
+【技能标识】ffmpeg-bridge
+【依赖情况】🟢 零门槛（beatdetect/color_map 需 FFmpeg）
+
+【功能描述】
+把 01/03/04/07 类技能产出的"方案"（口播稿/粗剪清单/切点/调色名）转换成 08 类自动成片流水线能直接消费的机器可读中间文件（srt / manifest.json / 切点.json）。
+
+【这是真·自动执行技能】
+  · 和 01-07 类「出方案让你手动做」不同，本技能带 scripts/ 脚本，调用你本地 FFmpeg 直接产出成片文件
+  · 纯本地运行，零外部付费 API / 密钥依赖；FFmpeg 免费开源，字幕识别可选本地 whisper（同样免费）
+
+【核心能力拆解】
+  · 把"方案→成片桥接器（中间产物转换）"从"人工点按钮"变成"一行命令自动出片"
+  · 可批量、可串联（pipeline 技能），适合矩阵号/口播日更的重复劳动
+
+【详细概述】
+前面 01-07 类技能产出的是"给人看的方案"，08 类脚本吃的是"给机器读的参数文件"——两者之间缺少一座桥，所以全流程看起来"断"的。本技能就是那座桥。
+
+附带 4 个桥接脚本：
+① script_to_srt.py：把 01 类产出的"口播稿.txt"转成标准 .srt 字幕文件，直接喂给 auto_subtitle/pipeline，彻底绕开 whisper 识别。
+② storyboard_to_manifest.py：把 03 类产出的"粗剪清单.txt"转成 pipeline 能吃的 manifest.json（含 clips / resolution / fps / subtitle / color_preset / platforms）。
+③ beatdetect.py：分析音频能量，输出"切点表.json"（静音段边界），给 04 类卡点做真实数据，也用于自动分段/转场。
+④ color_map.py：把 07 类的中文调色名（通透/胶片/冷调/日系/原片增强）映射成 auto_color.py 的 --preset 参数，统一调色语义。
+
+没有这些桥，01-07 和 08 就是两套不相干的工具；有了这些桥，方案层才真能把执行层跑起来。
+
+【适用场景】
+  · 口播/带货日更：素材拼成片 + 多平台导出，几分钟搞定
+  · 混剪（用你自有/CC0 合规素材）：批量预处理拼接
+  · 矩阵号：同一条片一键出全平台尺寸
+
+【输入要求】
+  · 你自己的素材（或 CC0 合规素材），本地路径
+  · 一条命令 + 几个参数即可，无需剪辑软件界面
+
+【3 步上手】
+  ① 装好 FFmpeg 并加入 PATH（免费）
+  ② 在技能目录运行：python scripts/script_to_srt.py <参数>
+  ③ 拿到输出成片，直接进入下一环节或发布
+
+【真实触发例句】（可直接复制发送）
+  · 把这份口播稿转成 srt 字幕文件，我要用 pipeline 烧录
+  · 把这份粗剪清单转成 manifest.json 让 pipeline 自动拼接
+  · 这份音频帮我找出静音切点，输出切点表
+
+【标准交付物】
+  · 一条/多条处理好的成片文件（mp4）
+  · scripts/ 下脚本已打包进 ZIP，可直接运行
+
+【产出样例】
+命令示例：
+python scripts/script_to_srt.py --input 口播稿.txt --output 字幕.srt --speed 4
+python scripts/storyboard_to_manifest.py --input 粗剪清单.txt --output manifest.json
+python scripts/beatdetect.py --input 配音.wav --output 切点.json --silence -40
+python scripts/color_map.py --cn 通透   # 输出 tongs
+
+输出：srt / manifest.json / 切点.json / preset 名，可直接被 pipeline 消费
+
+【附带的脚本】
+  · scripts/script_to_srt.py（已打包进 ZIP）
+  · scripts/storyboard_to_manifest.py（已打包进 ZIP）
+  · scripts/beatdetect.py（已打包进 ZIP）
+  · scripts/color_map.py（已打包进 ZIP）
+
+【常见翻车点（避坑）】
+  · 先确认 ffmpeg 在 PATH：终端跑 ffmpeg -version 有输出才行
+  · 素材务必是你自有/CC0 合规的，别用他人视频，避免侵权
+  · 字幕识别首次会下载 whisper 模型，耐心等几分钟
+
+【为什么零依赖也能用】
+  · 只用 FFmpeg（免费开源）+ 可选本地 whisper（免费本地模型），不调用任何付费 API/密钥
+  · 脚本带 ffmpeg 自动定位：找不到系统 ffmpeg 时尝试 imageio-ffmpeg 自带，最大限度开箱能跑
+
+【常见问题 FAQ】
+  · Q：桥接器需要 FFmpeg 吗？ A：script_to_srt 和 storyboard_to_manifest 是纯文件转换，不需要；beatdetect 和 color_map 需要 FFmpeg 处理音频/视频。
+  · Q：口播稿格式有要求吗？ A：每句一行即可，支持 [停顿2s] 标记；会自动按字数/语速分配时间轴。
+  · Q：粗剪清单格式？ A：每行一个素材路径，顶部可写 # resolution=1080x1920 / # color_preset=通透 / # platforms=douyin,xhs。
+  · Q：调色名映射表？ A：通透↔tongs、胶片↔film、冷调↔cold、日系↔japan、原片增强↔native。
+
+【质量自检清单】（交付前逐项确认）
+  □ FFmpeg 是否已安装并在 PATH
+  □ 输入的素材是否自有/合规
+  □ 输出成片是否能正常播放（首尾无黑帧/爆音）
+  □ 多平台导出比例是否正确（9:16/3:4/16:9/1:1）
+
+——————————————————
+淘宝店：AI灵匣 整理 · 淘宝店：AI灵匣

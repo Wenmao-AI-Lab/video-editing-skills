@@ -1,0 +1,13 @@
+{
+  "clips": [
+    "素材1.mp4",
+    "素材2.mp4"
+  ],
+  "resolution": {"w": 1080, "h": 1920},
+  "fps": 30,
+  "subtitle": "口播稿.srt",
+  "color_preset": "tongs",
+  "platforms": ["douyin", "xhs"],
+  "title": "片头标题（可选）",
+  "audio": "bgm.mp3（可选）"
+}

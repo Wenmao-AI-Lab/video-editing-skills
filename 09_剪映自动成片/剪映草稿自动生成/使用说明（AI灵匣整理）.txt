@@ -1,0 +1,87 @@
+【所属分类】剪映自动成片
+【技能名称】剪映草稿自动生成
+【技能标识】jianying-draft-gen
+【依赖情况】🟡 需剪映（买家侧）· 生成阶段仅 pyJianYingDraft + FFmpeg
+
+【功能描述】
+把 08 桥接器产出的 manifest.json（含 clips / resolution / fps / subtitle）直接转换成剪映草稿工程（.draft/draft_content.json），让方案层 01-07 的产出也能在剪映里一键自动成片。与 ffmpeg 线共用同一份 manifest，实现"一个方案、两条渲染线"。
+
+【这是第二条自动线（和 08 ffmpeg 线并列）】
+  · 08 类（FFmpeg 线）：manifest.json → 命令行直接渲染成片，全程无需打开剪辑软件
+  · 本技能（剪映线）：manifest.json → 剪映草稿工程，买家打开剪映即见排好的时间线，点导出出片
+  · 两条线吃同一份 manifest.json，买家按习惯二选一，01-07 的产出都不浪费
+
+【核心能力拆解】
+  · 把"方案→剪映草稿"从"手动拖素材"变成"一行命令自动铺时间线"
+  · 字幕/标题/音频按 manifest 自动落轨，和 ffmpeg 线保持同一份字幕、同一套规划
+
+【详细概述】
+视频剪辑包"全流程"之前断在：01-07 出"人读方案"，08 出"机器成片"，中间缺接口。08 桥接器把方案落成 manifest.json，ffmpeg 线吃完它直接渲染；但很多买家习惯用剪映精修/套模板，于是本技能让同一份 manifest.json 也能变成剪映草稿——方案层产出在剪映里自动铺好视频轨/字幕轨/音频轨，不再手动拼。
+
+附带脚本 gen_jianying_draft.py：
+① 读 manifest.json 的 clips，用 ffmpeg 探测每个素材真实时长，按顺序排列视频轨
+② 读 manifest 里的 subtitle（.srt），经 import_srt 直接生成字幕轨（与 ffmpeg 烧录同一份字幕）
+③ 可选 --title 生成片头标题轨、--audio 生成背景音乐/配音轨
+④ 输出 xxx.draft/draft_content.json，放进剪映「草稿」目录即可打开
+
+没有这条线，习惯剪映的买家就拿不到方案层的自动成果；有了它，包才真正对"剪映党"和"命令行党"都闭环。
+
+【适用场景】
+  · 习惯剪映精修/套模板的买家：方案自动铺好，省去手动拖素材
+  · 同一份方案既要 ffmpeg 自动出片、又要剪映出一份：双线并行
+  · 需要剪映专属能力（模板/贴纸/关键帧）的成片
+
+【输入要求】
+  · 08 桥接器产出的 manifest.json（由 03 类粗剪清单经 storyboard_to_manifest.py 生成）
+  · 你自己的素材（或 CC0 合规素材），本地路径
+  · 可选：.srt 字幕、片头标题文字、背景音乐
+
+【3 步上手】
+  ① 装好依赖：pip install pyJianYingDraft（FFmpeg 也需安装并在 PATH）
+  ② 在技能目录运行：python scripts/gen_jianying_draft.py --manifest manifest.json --output 我的视频.draft
+  ③ 把生成的 xxx.draft 文件夹放进剪映「草稿」目录，打开即见时间线，点导出成片
+
+【真实触发例句】（可直接复制发送）
+  · 把这份 manifest.json 转成剪映草稿，我要在剪映里导出
+  · 方案层已经排好粗剪清单了，帮我生成剪映工程，别让我手动拖素材
+  · 用同一份 manifest，给我一条 ffmpeg 线、一条剪映线，我自己选
+
+【标准交付物】
+  · 一个剪映草稿文件夹 xxx.draft/draft_content.json（视频轨/字幕轨/标题轨/音频轨齐全）
+  · scripts/ 下 gen_jianying_draft.py 已打包进 ZIP，可直接运行
+
+【产出样例】
+命令示例：
+python scripts/gen_jianying_draft.py --manifest manifest.json --output 成片_剪映.draft --title "双线贯通演示"
+python scripts/gen_jianying_draft.py --manifest manifest.json --output 成片_剪映.draft --title "片头" --audio bgm.mp3
+
+输出：成片_剪映.draft/draft_content.json，放进剪映草稿目录，打开即见完整时间线。
+
+【附带的脚本】
+  · scripts/gen_jianying_draft.py（已打包进 ZIP，依赖 pyJianYingDraft + FFmpeg）
+
+【常见翻车点（避坑）】
+  · 先确认依赖：终端跑 pip show pyJianYingDraft 有输出、ffmpeg -version 有输出才行
+  · 素材务必是你自有/CC0 合规的，别用他人视频，避免侵权
+  · 剪映草稿是"文件夹"不是单文件，整 folder 放进剪映草稿目录才认
+
+【为什么零依赖也能用（相对说明）】
+  · 仅用 pyJianYingDraft（免费开源，只写 JSON）+ FFmpeg（免费开源，只探测时长），不调用任何付费 API/密钥
+  · 脚本带 ffmpeg 自动定位：找不到系统 ffmpeg 时尝试 imageio-ffmpeg 自带，最大限度开箱能跑
+
+【常见问题 FAQ】
+  · Q：生成草稿需要装剪映吗？ A：不需要。生成阶段只用 pyJianYingDraft 写 JSON；剪映只用于最后打开草稿、点导出。
+  · Q：和 ffmpeg 线冲突吗？ A：不冲突，共用 manifest。想全自动用 ffmpeg 线；想用剪映精修/套模板用本线。
+  · Q：字幕怎么来的？ A：直接吃 manifest 里的 .srt（即 01 类口播稿经 script_to_srt.py 生成的同一份），两条线字幕一致。
+  · Q：素材时长对不齐？ A：脚本用 ffmpeg 探测每个素材真实时长并按顺序排布，无需手动算。
+  · Q：调色怎么处理？ A：剪映线保留 07 类调色预设名，买家在剪映一键套对应 LUT/滤镜；ffmpeg 线由 auto_color 自动处理。
+
+【质量自检清单】（交付前逐项确认）
+  □ pyJianYingDraft 是否已安装（pip show pyJianYingDraft）
+  □ FFmpeg 是否已安装并在 PATH（ffmpeg -version）
+  □ 输入的素材是否自有/合规
+  □ 生成的 xxx.draft/draft_content.json 是否在（视频轨/字幕轨齐全）
+  □ 买家能否把 .draft 文件夹正常导入剪映并看到时间线
+
+——————————————————
+淘宝店：AI灵匣 整理 · 淘宝店：AI灵匣
